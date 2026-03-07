@@ -3,7 +3,7 @@ use crate::protocol::{
     types::{LogIndex, NodeId, Term},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct RequestVote {
     pub term: Term,
     pub candidate_id: NodeId,
@@ -11,13 +11,13 @@ pub struct RequestVote {
     pub last_log_term: Term,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct RequestVoteResponse {
     pub term: Term,
     pub vote_granted: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AppendEntries {
     pub term: Term,
     pub leader_id: NodeId,
@@ -27,7 +27,7 @@ pub struct AppendEntries {
     pub leader_commit: LogIndex,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AppendEntriesResponse {
     pub term: Term,
     pub success: bool,

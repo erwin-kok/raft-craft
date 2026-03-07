@@ -1,7 +1,8 @@
-use crate::protocol::types::Term;
+use crate::protocol::types::{LogIndex, Term};
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
-    _term: Term,
-    _command: String,
+    pub term: Term,
+    pub index: LogIndex,
+    pub _command: String,
 }
