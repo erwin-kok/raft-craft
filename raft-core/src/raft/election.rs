@@ -53,12 +53,12 @@ impl Raft {
 mod tests {
     use crate::{
         Raft,
-        protocol::{action::Action, message::Message},
+        protocol::{action::Action, message::Message, types::NodeId},
     };
 
     #[test]
     fn election_timeout_promotes_follower_to_candidate_and_sends_votes() {
-        let mut raft = new_node();
+        let mut raft = new_node_with_peers(1, vec![1, 2, 3]);
 
         // ensure starting as follower
         assert_eq!(raft.role, crate::Role::Follower);
@@ -68,9 +68,7 @@ mod tests {
         // call election timeout
         let actions = raft.handle_election_timeout();
 
-        // ---------------------------
-        // Check Raft state updates
-        // ---------------------------
+        // Check state updates
         assert_eq!(
             raft.role,
             crate::Role::Candidate,
@@ -83,17 +81,12 @@ mod tests {
             "Candidate votes for self"
         );
 
-        // ---------------------------
-        // Check actions returned
-        // ---------------------------
-        // Should include one ResetElectionTimer action
+        // Check actions
         assert!(
             actions
                 .iter()
                 .any(|a| matches!(a, Action::ResetElectionTimer))
         );
-
-        // Should include vote messages to all other peers
         for peer_id in raft.peers.iter().filter(|&&id| id != raft.id) {
             assert!(actions.iter().any(|a| {
                 matches!(a, Action::Send(id, Message::RequestVote(vote)) if vote.candidate_id == raft.id && vote.term == raft.persistent.current_term)
@@ -109,22 +102,95 @@ mod tests {
     }
 
     #[test]
+    fn election_timeout_with_empty_log_defaults_to_zero() {
+        let mut raft = new_node_with_peers(1, vec![2, 3]);
+        raft.persistent.log.clear(); // ensure empty
+
+        let actions = raft.handle_election_timeout();
+
+        for a in actions.iter() {
+            if let Action::Send(_, Message::RequestVote(vote)) = a {
+                assert_eq!(vote.last_log_index, 0);
+                assert_eq!(vote.last_log_term, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn election_timeout_for_candidate_increments_term() {
+        let mut raft = new_node_with_peers(1, vec![2, 3]);
+        raft.role = crate::Role::Candidate;
+        raft.persistent.current_term = 5;
+
+        let actions = raft.handle_election_timeout();
+
+        assert_eq!(raft.role, crate::Role::Candidate);
+        assert_eq!(raft.persistent.current_term, 6);
+        assert_eq!(raft.persistent.voted_for, Some(raft.id));
+
+        let vote_count = actions
+            .iter()
+            .filter(|a| matches!(a, Action::Send(_, Message::RequestVote(_))))
+            .count();
+        assert_eq!(vote_count, 2);
+    }
+
+    #[test]
     fn election_timeout_does_nothing_if_leader() {
-        let mut raft = new_node();
+        let mut raft = new_node_with_peers(1, vec![2, 3]);
         raft.role = crate::Role::Leader;
+        raft.persistent.current_term = 3;
 
         let actions = raft.handle_election_timeout();
 
         // Leader should not change term or role
         assert_eq!(raft.role, crate::Role::Leader);
-        assert_eq!(raft.persistent.current_term, 0);
+        assert_eq!(raft.persistent.current_term, 3);
         assert!(raft.persistent.voted_for.is_none());
 
         // No actions
         assert!(actions.is_empty());
     }
 
-    fn new_node() -> Raft {
-        Raft::new(1, vec![1, 2, 3])
+    #[test]
+    fn election_timeout_sends_request_vote_to_all_other_peers() {
+        let mut raft = new_node_with_peers(1, vec![1, 2, 3, 4, 5]);
+
+        let actions = raft.handle_election_timeout();
+
+        let vote_peers: Vec<NodeId> = actions
+            .iter()
+            .filter_map(|a| {
+                if let Action::Send(peer_id, Message::RequestVote(_)) = a {
+                    Some(*peer_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(vote_peers.len(), 4); // all peers except self
+        assert!(!vote_peers.contains(&raft.id));
+        assert!(vote_peers.contains(&2));
+        assert!(vote_peers.contains(&3));
+        assert!(vote_peers.contains(&4));
+        assert!(vote_peers.contains(&5));
+    }
+
+    #[test]
+    fn election_timeout_returns_one_reset_timer() {
+        let mut raft = new_node_with_peers(1, vec![2, 3, 4]);
+        let actions = raft.handle_election_timeout();
+
+        let reset_count = actions
+            .iter()
+            .filter(|a| matches!(a, Action::ResetElectionTimer))
+            .count();
+        assert_eq!(reset_count, 1);
+    }
+
+    /// Helper to create a Raft node with peers
+    fn new_node_with_peers(id: NodeId, peers: Vec<NodeId>) -> Raft {
+        Raft::new(id, peers)
     }
 }

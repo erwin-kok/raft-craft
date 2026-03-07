@@ -36,38 +36,22 @@ mod tests {
         },
     };
 
-    /// Helper to create a Raft node
-    fn new_node() -> Raft {
-        Raft::new(1, vec![2, 3])
-    }
-
     #[test]
     fn step_handles_election_timeout() {
         let mut raft = new_node();
         let actions = raft.step(Event::ElectionTimeout);
 
-        // Count ResetElectionTimer actions
-        let reset_timer_count = actions
-            .iter()
-            .filter(|a| matches!(a, Action::ResetElectionTimer))
-            .count();
-        assert_eq!(
-            reset_timer_count, 1,
-            "should have exactly 1 ResetElectionTimer"
-        );
+        let reset_count = count_actions(&actions, |a| matches!(a, Action::ResetElectionTimer));
+        assert_eq!(reset_count, 1, "should have exactly 1 ResetElectionTimer");
 
-        // Count RequestVote messages
-        let request_vote_count = actions
-            .iter()
-            .filter(|a| matches!(a, Action::Send(_, Message::RequestVote(_))))
-            .count();
+        let request_vote_count = count_actions(&actions, |a| {
+            matches!(a, Action::Send(_, Message::RequestVote(_)))
+        });
         assert_eq!(
             request_vote_count, 2,
             "should have exactly 2 RequestVote messages"
         );
-
-        // Optional: check total actions
-        assert_eq!(actions.len(), 3, "total actions should be 3");
+        assert_eq!(actions.len(), 3);
     }
 
     #[test]
@@ -114,5 +98,18 @@ mod tests {
         let msg = Message::AppendEntriesResponse(AppendEntriesResponse::default());
         let actions = raft.step(Event::Message(msg));
         assert!(actions.is_empty());
+    }
+
+    /// Helper to create a Raft node
+    fn new_node() -> Raft {
+        Raft::new(1, vec![2, 3])
+    }
+
+    /// Helper to count action types
+    fn count_actions<F>(actions: &[Action], f: F) -> usize
+    where
+        F: Fn(&Action) -> bool,
+    {
+        actions.iter().filter(|a| f(a)).count()
     }
 }
