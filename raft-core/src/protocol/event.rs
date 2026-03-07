@@ -1,5 +1,4 @@
-use crate::command::Command;
-use crate::message::Message;
+use crate::protocol::{command::Command, message::Message};
 
 pub enum Event {
     Message(Message),

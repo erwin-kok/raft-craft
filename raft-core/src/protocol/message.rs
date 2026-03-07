@@ -1,5 +1,7 @@
-use crate::log::LogEntry;
-use crate::types::{LogIndex, NodeId, Term};
+use crate::protocol::{
+    log::LogEntry,
+    types::{LogIndex, NodeId, Term},
+};
 
 #[derive(Debug, Clone)]
 pub struct RequestVote {

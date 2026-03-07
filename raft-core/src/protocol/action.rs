@@ -1,5 +1,4 @@
-use crate::types::NodeId;
-use crate::{log::LogEntry, message::Message};
+use crate::protocol::{log::LogEntry, message::Message, types::NodeId};
 
 pub enum Action {
     /// Send this message to another node
