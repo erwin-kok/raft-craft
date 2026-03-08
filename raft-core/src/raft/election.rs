@@ -18,6 +18,15 @@ impl Raft {
 
         // vote for self
         self.persistent.voted_for = Some(self.id);
+        self.persistent.votes_from.clear();
+        self.persistent.votes_from.insert(self.id);
+        self.persistent.votes_granted = 1;
+
+        // If there is only one peer (ourself), immediately become leader.
+        if self.peers.len() == 1 {
+            self.become_leader();
+            return vec![Action::ResetHeartbeatTimer];
+        }
 
         // restart election timer
         let mut actions = vec![Action::ResetElectionTimer];
@@ -187,6 +196,60 @@ mod tests {
             .filter(|a| matches!(a, Action::ResetElectionTimer))
             .count();
         assert_eq!(reset_count, 1);
+    }
+
+    #[test]
+    fn single_node_cluster_becomes_leader_immediately() {
+        let mut raft = new_node_with_peers(1, vec![1]); // no other peers
+        let actions = raft.handle_election_timeout();
+
+        assert_eq!(actions.len(), 1);
+
+        assert_eq!(raft.role, crate::Role::Leader);
+        assert!(matches!(actions[0], Action::ResetHeartbeatTimer));
+    }
+
+    #[test]
+    fn candidate_restart_election_resets_votes() {
+        let mut raft = new_node_with_peers(1, vec![2, 3]);
+        raft.role = crate::Role::Candidate;
+        raft.persistent.current_term = 3;
+        raft.persistent.voted_for = Some(99);
+        raft.persistent.votes_granted = 99;
+        raft.persistent.votes_from.extend([1, 2, 3, 4, 5]);
+
+        let actions = raft.handle_election_timeout();
+
+        assert_eq!(raft.role, crate::Role::Candidate);
+        assert_eq!(raft.persistent.current_term, 4);
+        assert_eq!(raft.persistent.voted_for, Some(raft.id));
+        assert!(raft.persistent.votes_from.contains(&1));
+        assert_eq!(raft.persistent.votes_granted, 1);
+
+        let vote_count = actions
+            .iter()
+            .filter(|a| matches!(a, Action::Send(_, Message::RequestVote(_))))
+            .count();
+        assert_eq!(vote_count, 2);
+    }
+
+    #[test]
+    fn multiple_election_timeouts_only_one_reset_per_call() {
+        let mut raft = new_node_with_peers(1, vec![2, 3]);
+        let actions1 = raft.handle_election_timeout();
+        let actions2 = raft.handle_election_timeout();
+
+        let reset1 = actions1
+            .iter()
+            .filter(|a| matches!(a, Action::ResetElectionTimer))
+            .count();
+        let reset2 = actions2
+            .iter()
+            .filter(|a| matches!(a, Action::ResetElectionTimer))
+            .count();
+
+        assert_eq!(reset1, 1);
+        assert_eq!(reset2, 1);
     }
 
     /// Helper to create a Raft node with peers

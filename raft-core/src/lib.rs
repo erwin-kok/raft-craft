@@ -2,6 +2,7 @@ use crate::protocol::{
     log::LogEntry,
     types::{LogIndex, NodeId, Term},
 };
+use std::collections::HashSet;
 
 mod protocol;
 mod raft;
@@ -19,6 +20,8 @@ pub enum Role {
 pub struct PersistentState {
     pub current_term: Term,
     pub voted_for: Option<NodeId>,
+    pub votes_from: HashSet<NodeId>,
+    pub votes_granted: u64,
     pub log: Vec<LogEntry>,
 }
 
@@ -56,6 +59,8 @@ impl Raft {
             persistent: PersistentState {
                 current_term: 0,
                 voted_for: None,
+                votes_from: HashSet::new(),
+                votes_granted: 0,
                 log: Vec::new(),
             },
             volatile: VolatileState {
