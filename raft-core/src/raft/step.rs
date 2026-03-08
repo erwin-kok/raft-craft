@@ -73,7 +73,17 @@ mod tests {
         let mut raft = new_node();
         let msg = Message::RequestVote(RequestVote::default());
         let actions = raft.step(Event::Message(msg));
-        assert!(actions.is_empty());
+        let reset_count = count_actions(&actions, |a| matches!(a, Action::ResetElectionTimer));
+        assert_eq!(reset_count, 1, "should have exactly 1 ResetElectionTimer");
+
+        let request_vote_response_count = count_actions(&actions, |a| {
+            matches!(a, Action::Send(_, Message::RequestVoteResponse(_)))
+        });
+        assert_eq!(
+            request_vote_response_count, 1,
+            "should have exactly 1 RequestVoteResponse messages"
+        );
+        assert_eq!(actions.len(), 2);
     }
 
     #[test]
