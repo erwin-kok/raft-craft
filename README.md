@@ -1,5 +1,9 @@
 # Implementing Raft in Rust
 
+[![ci](https://github.com/erwin-kok/raft-craft/actions/workflows/ci.yaml/badge.svg)](https://github.com/erwin-kok/raft-craft/actions/workflows/ci.yaml)
+[![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/github/license/erwin-kok/raft-craft.svg)](https://github.com/erwin-kok/raft-craft/blob/master/LICENSE)
+
 Welcome! This repository contains my **from-scratch implementation** of the **Raft consensus algorithm** in **Rust**.
 
 While I’m not new to **distributed systems**, this is my first deep dive into **Rust**. The goal of this project isn’t to create a production-ready Raft library—rather, it’s an opportunity for me to learn and explore Rust’s unique features while implementing Raft. Through this process, I’ll be tackling key topics like:
