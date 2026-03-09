@@ -1,4 +1,4 @@
-use crate::protocol::{log::LogEntry, message::Message, types::NodeId};
+use crate::protocol::{command::Command, message::Message, types::NodeId};
 
 pub enum Action {
     /// Send this message to another node
@@ -13,6 +13,6 @@ pub enum Action {
     /// Persists state
     PersistState,
 
-    /// Apply this log entry to the state machine
-    ApplyLog(LogEntry),
+    /// Apply Command to the state machine
+    ApplyCommand(Command),
 }
