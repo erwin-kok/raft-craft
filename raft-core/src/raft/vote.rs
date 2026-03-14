@@ -20,10 +20,10 @@ impl Raft {
         }
 
         // Already voted for a different candidate this term.
-        if let Some(voted_for) = self.persistent.voted_for {
-            if voted_for != msg.candidate_id {
-                return vec![self.vote_response(msg.candidate_id, false)];
-            }
+        if let Some(voted_for) = self.persistent.voted_for
+            && voted_for != msg.candidate_id
+        {
+            return vec![self.vote_response(msg.candidate_id, false)];
         }
 
         // Candidate log must be at least as up-to-date as ours.
@@ -94,6 +94,7 @@ impl Raft {
         self.persistent.voted_for = None;
         self.candidate_state = None;
         self.leader_state = None;
+        self.known_leader = None;
     }
 
     /// Returns true if the candidate's log is at least as up-to-date as ours.
@@ -125,6 +126,7 @@ impl Raft {
 
         let next = self.last_log_index() + 1;
         self.role = Role::Leader;
+        self.known_leader = Some(self.id);
         self.candidate_state = None;
         self.leader_state = Some(LeaderState {
             next_index: vec![next; self.peers.len()],

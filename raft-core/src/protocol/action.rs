@@ -13,6 +13,9 @@ pub enum Action {
     /// Persists state
     PersistState,
 
+    /// Notify client of actual leader
+    NotLeader(Option<NodeId>),
+
     /// Apply Command to the state machine
     ApplyCommand(Command),
 }

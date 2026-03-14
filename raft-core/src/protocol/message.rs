@@ -32,6 +32,8 @@ pub struct AppendEntries {
 pub struct AppendEntriesResponse {
     pub term: Term,
     pub success: bool,
+    pub from: NodeId,
+    pub match_index: LogIndex,
 }
 
 #[derive(Debug, Clone)]
