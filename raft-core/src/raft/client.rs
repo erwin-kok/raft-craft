@@ -43,7 +43,7 @@ impl Raft {
         // entry is committed the moment it is appended. No peers means no
         // AppendEntries responses will ever arrive, so try_advance_commit_index
         // would never be called otherwise.
-        let mut actions = vec![Action::ResetHeartbeatTimer];
+        let mut actions = vec![Action::ResetHeartbeatTimer, Action::PersistState];
         if self.peers.is_empty() {
             actions.extend(self.try_advance_commit_index());
         }
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn appended_entry_carries_the_submitted_command() {
         let mut raft = make_leader(1, &[2, 3]);
-        let cmd = Command::new(42);
+        let cmd = Command::set("key", "value");
 
         raft.handle_client_request(cmd.clone());
 
@@ -210,7 +210,7 @@ mod tests {
 
         let actions = raft.handle_client_request(Command::default());
 
-        assert_eq!(actions.len(), 1);
+        assert_eq!(actions.len(), 2);
     }
 
     #[test]

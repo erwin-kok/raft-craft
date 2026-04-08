@@ -55,6 +55,7 @@ mod tests {
             count(&actions, |a| matches!(a, Action::ResetElectionTimer)),
             1
         );
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
         assert_eq!(
             count(&actions, |a| matches!(
                 a,
@@ -62,7 +63,7 @@ mod tests {
             )),
             2,
         );
-        assert_eq!(actions.len(), 3);
+        assert_eq!(actions.len(), 4);
 
         // State transitions.
         assert_eq!(raft.role, Role::Candidate);
@@ -255,7 +256,8 @@ mod tests {
             count(&actions, |a| matches!(a, Action::ResetHeartbeatTimer)),
             1
         );
-        assert_eq!(actions.len(), 1);
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
+        assert_eq!(actions.len(), 2);
         assert_eq!(raft.persistent.log.len(), 1);
         assert_eq!(raft.persistent.log[0].index, 1);
         assert_eq!(raft.persistent.log[0].term, 1);
@@ -291,6 +293,7 @@ mod tests {
             count(&actions, |a| matches!(a, Action::ResetElectionTimer)),
             1
         );
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
         assert_eq!(
             count(&actions, |a| matches!(
                 a,
@@ -298,7 +301,7 @@ mod tests {
             )),
             1,
         );
-        assert_eq!(actions.len(), 2);
+        assert_eq!(actions.len(), 3);
 
         // Response must be addressed to the candidate and grant the vote.
         let resp = find_vote_response(&actions);
@@ -402,6 +405,7 @@ mod tests {
             count(&actions, |a| matches!(a, Action::ResetElectionTimer)),
             1
         );
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
         assert_eq!(
             count(&actions, |a| matches!(
                 a,
@@ -409,7 +413,7 @@ mod tests {
             )),
             1,
         );
-        assert_eq!(actions.len(), 2);
+        assert_eq!(actions.len(), 3);
 
         let resp = find_append_entries_response(&actions);
         assert!(resp.success);

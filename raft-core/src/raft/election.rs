@@ -31,11 +31,11 @@ impl Raft {
         // Single-node cluster: win immediately.
         if self.peers.is_empty() {
             self.become_leader();
-            return vec![Action::ResetHeartbeatTimer];
+            return vec![Action::ResetHeartbeatTimer, Action::PersistState];
         }
 
         // restart election timer
-        let mut actions = vec![Action::ResetElectionTimer];
+        let mut actions = vec![Action::ResetElectionTimer, Action::PersistState];
 
         // send vote requests to all other peers
         actions.extend(
@@ -100,12 +100,13 @@ mod tests {
                 "missing RequestVote for peer {peer_id}"
             );
         }
-
-        let vote_count = actions
-            .iter()
-            .filter(|a| matches!(a, Action::Send(_, Message::RequestVote(_))))
-            .count();
-        assert_eq!(vote_count, raft.peers.len());
+        assert_eq!(
+            count(&actions, |a| matches!(
+                a,
+                Action::Send(_, Message::RequestVote(_))
+            )),
+            raft.peers.len()
+        );
     }
 
     #[test]
@@ -135,10 +136,10 @@ mod tests {
         assert_eq!(raft.persistent.current_term, 6);
         assert_eq!(raft.persistent.voted_for, Some(raft.id));
         assert_eq!(
-            actions
-                .iter()
-                .filter(|a| matches!(a, Action::Send(_, Message::RequestVote(_))))
-                .count(),
+            count(&actions, |a| matches!(
+                a,
+                Action::Send(_, Message::RequestVote(_))
+            )),
             2
         );
     }
@@ -189,11 +190,14 @@ mod tests {
         let mut raft = new_raft(1, &[2, 3, 4]);
         let actions = raft.handle_election_timeout();
 
-        let count = actions
-            .iter()
-            .filter(|a| matches!(a, Action::ResetElectionTimer))
-            .count();
-        assert_eq!(count, 1);
+        assert_eq!(
+            count(&actions, |a| matches!(a, Action::ResetElectionTimer)),
+            1
+        );
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
+        assert_eq!(count(&actions, |a| matches!(a, Action::Send(_, _))), 3);
+
+        assert_eq!(actions.len(), 5);
     }
 
     #[test]
@@ -203,8 +207,14 @@ mod tests {
         let actions = raft.handle_election_timeout();
 
         assert_eq!(raft.role, Role::Leader);
-        assert_eq!(actions.len(), 1);
-        assert!(matches!(actions[0], Action::ResetHeartbeatTimer));
+
+        assert_eq!(count(&actions, |a| matches!(a, Action::PersistState)), 1);
+        assert_eq!(
+            count(&actions, |a| matches!(a, Action::ResetHeartbeatTimer)),
+            1
+        );
+
+        assert_eq!(actions.len(), 2);
     }
 
     #[test]
@@ -236,12 +246,18 @@ mod tests {
 
         for _ in 0..3 {
             let actions = raft.handle_election_timeout();
-            let count = actions
-                .iter()
-                .filter(|a| matches!(a, Action::ResetElectionTimer))
-                .count();
-            assert_eq!(count, 1);
+            assert_eq!(
+                count(&actions, |a| matches!(a, Action::ResetElectionTimer)),
+                1
+            );
         }
+    }
+
+    fn count<F>(actions: &[Action], f: F) -> usize
+    where
+        F: Fn(&Action) -> bool,
+    {
+        actions.iter().filter(|a| f(a)).count()
     }
 
     fn new_raft(id: NodeId, peers: &[NodeId]) -> Raft {

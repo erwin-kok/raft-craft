@@ -1,21 +1,19 @@
 use crate::protocol::{command::Command, message::Message, types::NodeId};
 
+#[derive(Debug, Clone)]
 pub enum Action {
-    /// Send this message to another node
+    /// Send a message to another node.
     Send(NodeId, Message),
-
-    /// Reset the election timer
+    /// Reset (restart) the election timer.
     ResetElectionTimer,
-
-    /// Reset heartbeat timer
+    /// Reset (restart) the heartbeat timer.
     ResetHeartbeatTimer,
-
-    /// Persists state
+    /// Persist current term, voted_for, and log to stable storage.
     PersistState,
-
-    /// Notify client of actual leader
+    /// Notify the client that this node is not the leader.
+    /// Carries the best-known current leader id.
     NotLeader(Option<NodeId>),
-
-    /// Apply Command to the state machine
+    /// Apply this command to the state machine.
     ApplyCommand(Command),
 }
+

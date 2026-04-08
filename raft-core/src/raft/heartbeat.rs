@@ -44,8 +44,7 @@ impl Raft {
         let next_index = self
             .leader_state
             .as_ref()
-            .map(|ls| ls.next_index[peer_index])
-            .unwrap_or(1);
+            .map_or(1, |ls| ls.next_index[peer_index]);
 
         // The entry immediately before `next_index` is the "prev" entry that
         // the follower uses to validate log consistency (§5.3).
@@ -87,8 +86,7 @@ impl Raft {
             .log
             .iter()
             .find(|e| e.index == prev_index)
-            .map(|e| e.term)
-            .unwrap_or(0);
+            .map_or(0, |e| e.term);
         (prev_index, prev_term)
     }
 }

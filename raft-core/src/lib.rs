@@ -2,82 +2,86 @@ use crate::protocol::{
     log::LogEntry,
     types::{LogIndex, NodeId, Term},
 };
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-mod protocol;
-mod raft;
+pub mod protocol;
+pub mod raft;
 
-/// Raft role
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// ── Role ──────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Role {
     Follower,
     Candidate,
     Leader,
 }
 
-/// Raft persistent state (must survive crashes)
-///
-/// Note: `voted_for` is term-scoped; must be reset when `current_term` advances.
-#[derive(Debug, Default, Clone)]
+// ── State structs ─────────────────────────────────────────────────────────────
+
+/// Persistent state — must be saved to stable storage before responding to RPCs.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PersistentState {
     /// latest term server has seen
-    pub(crate) current_term: Term,
+    pub current_term: Term,
     /// candidateId that received vote in current term (or null if none)
-    pub(crate) voted_for: Option<NodeId>,
+    pub voted_for: Option<NodeId>,
     /// each entry contains command for statemachine, and term when entry
     /// was received by leader (first index is 1)
-    pub(crate) log: Vec<LogEntry>,
+    pub log: Vec<LogEntry>,
 }
-
-/// Volatile election state, only valid while role == Candidate.
-/// Cleared on every role transition.
+/// Volatile election state — only valid while role == Candidate.
 #[derive(Debug, Clone, Default)]
 pub struct CandidateState {
     /// All peers from which a response (grant or reject) has been received.
-    pub(crate) votes_received: HashSet<NodeId>,
+    pub votes_received: HashSet<NodeId>,
     /// Peers that granted their vote.
-    pub(crate) votes_granted: HashSet<NodeId>,
+    pub votes_granted: HashSet<NodeId>,
 }
 
 impl CandidateState {
     /// Returns true if the number of granted votes meets or exceeds `quorum`.
-    pub(crate) fn has_majority(&self, quorum: usize) -> bool {
+    pub fn has_majority(&self, quorum: usize) -> bool {
         self.votes_granted.len() >= quorum
     }
 }
 
-/// Raft volatile state
+/// Volatile state — reset on every startup.
 #[derive(Debug, Clone, Default)]
 pub struct VolatileState {
     /// index of highest log entry known to be committed
-    pub(crate) commit_index: LogIndex,
+    pub commit_index: LogIndex,
     /// index of highest log entry applied to state machine
-    pub(crate) last_applied: LogIndex,
+    pub last_applied: LogIndex,
 }
 
-/// Raft leader volatile state (next_index and match_index per *follower*, self excluded)
+/// Leader-only volatile state — reset whenever a new leader is elected.
 #[derive(Debug, Clone)]
 pub struct LeaderState {
-    /// next_index[i] is the next log index to send to peers[i]
+    /// next_index[i] — next log index to send to peers[i]
     pub next_index: Vec<LogIndex>,
-    /// match_index[i] is the highest log index known to be replicated on peers[i]
+    /// match_index[i] — highest log index known replicated on peers[i]
     pub match_index: Vec<LogIndex>,
 }
 
-/// Raft core struct
+// ── Raft ──────────────────────────────────────────────────────────────────────
+
+/// Core Raft state machine.
+///
+/// `peers` excludes `self.id`.  All indexing into `leader_state` arrays
+/// uses the position of the peer in `self.peers`.
 pub struct Raft {
-    pub(crate) id: NodeId,
-    pub(crate) peers: Vec<NodeId>,
-    pub(crate) role: Role,
-    pub(crate) known_leader: Option<NodeId>,
-    pub(crate) persistent: PersistentState,
-    pub(crate) volatile: VolatileState,
-    pub(crate) leader_state: Option<LeaderState>,
-    pub(crate) candidate_state: Option<CandidateState>,
+    pub id: NodeId,
+    pub peers: Vec<NodeId>,
+    pub role: Role,
+    pub known_leader: Option<NodeId>,
+    pub persistent: PersistentState,
+    pub volatile: VolatileState,
+    pub leader_state: Option<LeaderState>,
+    pub candidate_state: Option<CandidateState>,
 }
 
 impl Raft {
-    /// Create a new Raft node
     pub fn new(id: NodeId, peers: Vec<NodeId>) -> Self {
         debug_assert!(
             !peers.contains(&id),
@@ -98,17 +102,24 @@ impl Raft {
     /// Quorum size: how many votes (including self) are needed to win.
     ///
     /// With N peers (excluding self), cluster size = N+1, majority = ⌊(N+1)/2⌋ + 1.
-    pub(crate) fn quorum(&self) -> usize {
+    pub fn quorum(&self) -> usize {
         self.peers.len().div_ceil(2) + 1
     }
 
+    /// Restore from persisted state after a crash.
+    pub fn restore(id: NodeId, peers: Vec<NodeId>, persistent: PersistentState) -> Self {
+        let mut r = Self::new(id, peers);
+        r.persistent = persistent;
+        r
+    }
+
     /// Index of the last log entry, or 0 if the log is empty.
-    pub(crate) fn last_log_index(&self) -> LogIndex {
+    pub fn last_log_index(&self) -> LogIndex {
         self.persistent.log.last().map_or(0, |e| e.index)
     }
 
     /// Term of the last log entry, or 0 if the log is empty.
-    pub(crate) fn last_log_term(&self) -> Term {
+    pub fn last_log_term(&self) -> Term {
         self.persistent.log.last().map_or(0, |e| e.term)
     }
 }

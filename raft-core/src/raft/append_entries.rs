@@ -83,6 +83,7 @@ impl Raft {
         let apply_actions = self.apply_committed_entries();
 
         let mut actions = vec![
+            Action::PersistState,
             Action::ResetElectionTimer,
             self.append_entries_response(msg.leader_id, true),
         ];

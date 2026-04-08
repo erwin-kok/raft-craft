@@ -34,6 +34,7 @@ impl Raft {
         // Grant vote.
         self.persistent.voted_for = Some(msg.candidate_id);
         vec![
+            Action::PersistState,
             Action::ResetElectionTimer,
             self.vote_response(msg.candidate_id, true),
         ]
