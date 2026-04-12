@@ -19,8 +19,20 @@ edition = "2024"
 license = "MIT"
 
 [workspace.dependencies]
+anyhow = "1"
+axum = { version = "0.7", features = ["json"] }
+crossterm = "0.27"
+parking_lot = "0.12"
+rand = "0.8"
+ratatui = "0.26"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [workspace.lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

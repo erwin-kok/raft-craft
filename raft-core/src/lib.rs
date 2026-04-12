@@ -99,18 +99,17 @@ impl Raft {
         }
     }
 
-    /// Quorum size: how many votes (including self) are needed to win.
-    ///
-    /// With N peers (excluding self), cluster size = N+1, majority = ⌊(N+1)/2⌋ + 1.
-    pub fn quorum(&self) -> usize {
-        self.peers.len().div_ceil(2) + 1
-    }
-
     /// Restore from persisted state after a crash.
     pub fn restore(id: NodeId, peers: Vec<NodeId>, persistent: PersistentState) -> Self {
         let mut r = Self::new(id, peers);
         r.persistent = persistent;
         r
+    }
+    /// Quorum size: how many votes (including self) are needed to win.
+    ///
+    /// With N peers (excluding self), cluster size = N+1, majority = ⌊(N+1)/2⌋ + 1.
+    pub fn quorum(&self) -> usize {
+        self.peers.len().div_ceil(2) + 1
     }
 
     /// Index of the last log entry, or 0 if the log is empty.
