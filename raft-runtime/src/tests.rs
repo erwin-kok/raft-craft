@@ -218,12 +218,9 @@ async fn three_node_cluster_elects_leader() {
     let shared = Arc::new(Mutex::new(HashMap::new()));
 
     // Build three transports that all share the same sender map.
-    let make_transport = |id: NodeId| {
-        let t = ManualTransport {
+    let make_transport = |id: NodeId| ManualTransport {
             senders: shared.clone(),
             self_id: id,
-        };
-        t
     };
 
     let config = fast_config();

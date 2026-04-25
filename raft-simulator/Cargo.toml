@@ -1,0 +1,22 @@
+[package]
+name = "raft-simulator"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "simulator"
+path = "src/main.rs"
+
+[dependencies]
+raft-core    = { path = "../raft-core" }
+raft-runtime = { path = "../raft-runtime" }
+
+tokio              = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+anyhow             = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+rand               = { workspace = true }
+ratatui            = { workspace = true }
+crossterm          = { workspace = true }

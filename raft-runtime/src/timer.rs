@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 use std::{sync::Arc, time::Duration};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -49,7 +49,7 @@ impl ElectionTimer {
             h.abort();
         }
         let range_ms = self.min.as_millis() as u64..=self.max.as_millis() as u64;
-        let ms = rand::thread_rng().gen_range(range_ms);
+        let ms = rand::rng().random_range(range_ms);
         let sleep = self.clock.sleep(Duration::from_millis(ms));
         let tx = self.event_tx.clone();
         self.handle = Some(tokio::spawn(async move {
